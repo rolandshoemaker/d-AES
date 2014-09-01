@@ -3,6 +3,11 @@ d-AES
 
 A pure python3 implementation of the Rijndael cipher (AES) based on Brandon Sterne's python2.5 [implementation](http://brandon.sternefamily.net/2007/06/aes-tutorial-python-implementation/) that additionally implements the modifications to the AES Cipher suggested in various academic papers to dynamically generate S-Boxes from the cipher key instead of using the fixed Rijndael S-Box, increasing the difficulty of linear and differntial cryptanalysis as well as making the improved Davies Attack more complicated.
 
+Visulization
+------------
+![Graph of difference between sbox generated from key and sbox generated from same key with flipped bit](screenshot.png)
+
+
 Academic Papers
 ---------------
 
