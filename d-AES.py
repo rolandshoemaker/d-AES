@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from copy import copy
 
-sbox = [
+sboxOrig = [
 	0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
 	0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
 	0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
@@ -20,7 +20,7 @@ sbox = [
 	0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
 	]
 
-sboxInv = [
+sboxOrigInv = [
 	0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
 	0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
 	0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
@@ -58,23 +58,28 @@ rcon = [
 	0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb
 	]
 
-def generateDynamicSbox(key):
-	pass
+def generateDynamicSbox(sbox, key):
+	sboxDyn = [0]*256
+	longKey = []
+	xorByte = hex(ord(key[len(key)-1])) # 0x00
+	currentLength = 0
+	keyBlockLen = len(key)//(len(sbox)//len(key))
+	while currentLength < len(sbox):
+		for i in range(len(sbox)//len(key)):
+			for j in range(keyBlockLen):
+				xorByte = hex(int(xorByte, base=16)^ord(key[((i*(keyBlockLen))+j)]))
+			for k in key:
+				longKey.append(hex(ord(k)^int(xorByte, base=16)))
+			currentLength = len(longKey)
+	for i, byte in enumerate(longKey):
+		sboxDyn[i] = hex(sbox[i]^int(byte, base=16))
+	return sboxDyn
 
-def getProperIndex():
-	pass
-
-def shiftRow():
-	pass
-
-def shiftColumn():
-	pass
-
-def swap():
-	pass
-
-def getShiftCount():
-	pass
+def invDynamicSbox(sbox):
+	invSbox = [0]*256
+	for i, byte in enumerate(sbox):
+		invSbox[byte & 0xFF] = hex(i)
+	return invSbox
 
 def rotate(word, n):
 	return word[n:]+word[0:n]
@@ -87,7 +92,7 @@ def shiftRowsInv(state):
 	for i in range(4):
 		state[i*4:i*4+4] = rotate(state[i*4:i*4+4],-i)
 
-def keySheculdeCore(word, i):
+def keySheculdeCore(word, i, sbox):
 	word = roate(word, 1)
 	newWord = []
 	for byte in word:
@@ -95,7 +100,7 @@ def keySheculdeCore(word, i):
 	newWord[0] = newWord[0]^rcon[i]
 	return newWord
 
-def expandKey(cipherKey):
+def expandKey(cipherKey, sbox):
 	cipherKeySize = leng(cipherKey)
 	assert cipherKeySize == 32
 	expandedKey = []
@@ -119,11 +124,11 @@ def expandKey(cipherKey):
 			currentSize += 1
 	return expandedKey
 
-def subBytes(state):
+def subBytes(state, sbox):
 	for i in range(len(state)):
 		state[i] = sbox[state[i]]
 
-def subBytesInv(state):
+def subBytesInv(state, sboxInv):
 	for i in range(len(state)):
 		state[i] = sboxInv[state[i]]
 
@@ -175,53 +180,64 @@ def mixColumnsInv(state):
 		for j in range(4):
 			state[j*4+i] = column[j]
 
-def aesRound(state, roundKey):
-	subBytes(state)
+def aesRound(state, roundKey, sbox):
+	subBytes(state, sbox)
 	shiftRows(state)
 	mixColumns(state)
 	addRoundKey(state, roundKey)
 
-def aesRoundInv(state, roundKey):
+def aesRoundInv(state, roundKey, sboxInv):
 	addRoundKey(state, roundKey)
 	mixColumnsInv(state)
 	shiftRowsInv(state)
-	subBytesInv(state)
+	subBytesInv(state, sboxInv)
 
 def createRoundKey(expandedKey, n):
 	return expandedKey[(n*16):(n*16+16)]
 
-def aesMain(state, expandedJey, numRounds=14):
+def aesMain(state, expandedJey, numRounds=14, sbox):
 	roundKey = createRoundKey(expandedKey, 0)
 	for i in range(1, numRounds):
 		roundKey = createRoundKey(expandedKey, numRounds)
-		aesRound(state, roundKey)
+		aesRound(state, roundKey, sbox)
 	roundKey = createRoundKey(expandedKey, numRounds)
-	subBytes(state)
+	subBytes(state, sbox)
 	shiftRows(state)
 	addRoundKey(state, roundKey)
 
-def aesMainInv(state, expandedKey, numRounds=14):
+def aesMainInv(state, expandedKey, numRounds=14, sboxInv):
 	roundKey = createRoundKey(expandedKey, numRounds)
 	addRoundKey(state, roundKey)
 	shiftRowsInv(state)
-	subBytesInv(state)
+	subBytesInv(state, sboxInv)
 	for i in range(numRounds-1,0,-1):
 		roundKey = createRoundKey(expandedKey, i)
-		aesRoundInv(state, roundKey)
+		aesRoundInv(state, roundKey, sboxInv)
 	roundKey = createRoundKey(expandedKey, 0)
 	addRoundKey(state, roundKey)
 
-def aesEncrypt(plaintext, key):
-	block = copy(plaintext)
-	expandedKey = expandKey(key)
-	aesMain(block, expandedKey)
-	return block
+def aesEncryptText(plaintext, key):
+	# generate sbox
+	sbox = generateDynamicSbox(sboxOrig, key)
+	blocks = getTextBlocks(plaintext)
+	expandedKey = expandKey(key, sbox)
+	ciphertext = []
+	for block in blocks:
+		aesMain(block, expandedKey, sbox)
+		ciphertext.append(block)
+	return "".join(ciphertext)
 
-def aesDecrypt(ciphertext, key):
-	block = copy(ciphertext)
-	expandedKey = expandKey(key)
-	aesMainInv(block, expandedKey)
-	return block
+def aesDecryptText(ciphertext, key):
+	# generate sbox
+	sbox = generateDynamicSbox(sboxOrig, key)
+	# generate inverse sbox
+	blocks = getTextBlocks(ciphertext)
+	expandedKey = expandKey(key, sbox)
+	plaintext = []
+	for block in blocks:
+		aesMainInv(block, expandedKey, sboxInv)
+		plaintext.append(block)
+	return "".join(plaintext)
 
 def getFileBlocks(fp):
 	raw = fp.read()
