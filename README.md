@@ -7,8 +7,9 @@ A pure python3 implementation of the Rijndael cipher (AES) based on Brandon Ster
 
 Visulization
 ------------
-![Graph of difference between sbox generated from key and sbox generated from same key with flipped bit](screenshot.png)
-
+Over ~650,000 iterations
+![Scatter plot of difference between sbox generated from key and sbox generated from same key with flipped bit](scatter-graph.png)
+![Histogram of difference between sbox generated from key and sbox generated from same key with flipped bit](hist-graph.png)]
 
 Academic Papers
 ---------------
