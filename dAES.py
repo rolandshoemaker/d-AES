@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+
 # Copyright (c) 2007 Brandon Sterne
 # Licensed under the MIT license.
 # http://brandon.sternefamily.net/files/mit-license.txt
@@ -8,15 +9,9 @@
 # Python3 update/library-ification with dynamic s-box fun
 # no license beyond what is already implied
 
-import sys, hashlib, string, getpass, uuid
+import sys, hashlib, string, getpass
 from copy import copy, deepcopy
 from random import randint
-
-# The actual Rijndael specification includes variable block size, but
-# AES uses a fixed block size of 16 bytes (128 bits)
-
-# Additionally, AES allows for a variable key size, though this implementation
-# of AES uses only 256-bit cipher keys (AES-256)
 
 sboxOrig = [
 		0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -450,7 +445,7 @@ def decrypt(myInput, aesKey):
 	for block in blocks:
 		plaintext = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] # plaintext container
 		padding = 0 
-		if block[len(block)-1] < 16 and block[len(block)-1] == block[16-block[len(block)-1]]:
+		if block[len(block)-1] < 16 and block[16-block[len(block)-1]] < 16 and block[len(block)-1] == block[16-block[len(block)-1]]:
 			padding = block[len(block)-1]
 			for p in range(16-block[len(block)-1], len(block)):
 				block.pop(len(block)-1)
@@ -477,15 +472,3 @@ def hexToKey(hexKey):
 	for i in range(0, len(hexKey), 2):
 		key.append(int(hexKey[i:i+2], base=16))
 	return key
-
-if __name__ == "__main__":
-	test_key = uuid.uuid4().hex+uuid.uuid4().hex # 256-bit (64 character) hex key
-	int_test_key = hexToKey(test_key)
-	print("test key: "+test_key)
-	plain = uuid.uuid4().hex+uuid.uuid4().hex+uuid.uuid4().hex+uuid.uuid4().hex
-	print("input data: "+plain)
-	hard = encrypt(plain, int_test_key)
-	print("plaintext != ciphertext? "+str(plain!=hard))
-	decd = decrypt(hard, int_test_key)
-	print("input plaintext == output plaintext? "+str(plain==decd))
-	print("output data: "+decd)
