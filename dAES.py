@@ -134,12 +134,18 @@ def sboxRound(key, newSbox):
 				shiftRow(coord[0], shiftCount, newSbox)
 				shiftColumn(coord[1], shiftCount, newSbox)
 				swap(coord, newSbox)
+def mixKey(key):
+	newKey = []
+	for i in range(len(key)):
+		newKey.append(key[i]^key[(i+8)%16]^sum(key))
+	return newKey
 
 def generateDynamicSbox(sbox, key):
 		newSbox = deepcopy(sbox)
-		sboxRound(key[0:16], newSbox)
-		sboxRound(key[16:32], newSbox)
-		return sbox
+		sboxKey = mixKey(key)
+		sboxRound(sboxKey[0:16], newSbox)
+		sboxRound(sboxKey[16:32], newSbox)
+		return newSbox
 
 def invDynamicSbox(sbox):
 		invSbox = [0]*256
