@@ -73,14 +73,14 @@ rcon = [
 		0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb
 		]
 
-#@profile
+@profile
 def getShift(key):
 		shiftCount = 0
 		for i, k in enumerate(key):
 				shiftCount ^= k*(i+1)%(0xFF+1)
 		return shiftCount
 
-#@profile
+@profile
 def getIndex(k, usedRow, usedColumn):
 		coord = []
 		coord.append(k&0x0F) # row
@@ -102,7 +102,7 @@ def getIndex(k, usedRow, usedColumn):
 				usedColumn.pop(usedColumn.index(coord[1]))
 		return coord
 
-#@profile
+@profile
 def shiftRow(row, shift, newSbox):
 		rowItems = list(range(row*16, (row*16)+16))
 		rowNew = [0]*256
@@ -111,7 +111,7 @@ def shiftRow(row, shift, newSbox):
 		for i, item in enumerate(rowItems):
 				newSbox[i] = rowNew[i]
 
-#@profile
+@profile
 def shiftColumn(column, shift, newSbox):
 		columnItems = list(range(column, 256-(15-column), 16))
 		columnNew = [0]*256
@@ -120,7 +120,7 @@ def shiftColumn(column, shift, newSbox):
 		for i in columnItems:
 				newSbox[(i+shift)%16] = columnNew[(i+shift)%16]
 
-#@profile
+@profile
 def swap(coords, newSbox):
 		rowItems = list(range(coords[0]*16, (coords[0]*16)+16))
 		columnItems = list(range(coords[1], 256-(15-coords[1]), 16))
@@ -133,7 +133,7 @@ def swap(coords, newSbox):
 				newSbox[b] = columnNew[b]
 				newSbox[a] = rowNew[a]
 
-#@profile
+@profile
 def sboxRound(key, newSbox):
 		shiftCount = getShift(key)
 		usedRow = list(range(16))
@@ -144,14 +144,14 @@ def sboxRound(key, newSbox):
 				shiftColumn(coord[1], shiftCount, newSbox)
 				swap(coord, newSbox)
 				
-#@profile
+@profile
 def mixKey(key):
 	newKey = []
 	for i in range(len(key)):
 		newKey.append(key[i]^sum(key))
 	return newKey
 
-#@profile
+@profile
 def generateDynamicSbox(sbox, key):
 		newSbox = deepcopy(sbox)
 		sboxKey = mixKey(key)
@@ -159,7 +159,7 @@ def generateDynamicSbox(sbox, key):
 		sboxRound(sboxKey[16:32], newSbox)
 		return newSbox
 
-#@profile
+@profile
 def invDynamicSbox(sbox):
 		invSbox = [0]*256
 		for i, byte in enumerate(sbox):
