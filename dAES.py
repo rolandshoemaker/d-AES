@@ -431,7 +431,7 @@ def encrypt(myInput, aesKey):
 			else:
 				if y == 0 and not i == 0:
 					y = i
-				ciphertext[i] = 16-y 
+				ciphertext[i] = 256+(16-y) 
 
 		for i, c in enumerate(ciphertext):
 			ciphertext[i] = chr(c)
@@ -450,11 +450,16 @@ def decrypt(myInput, aesKey):
 	firstRound = True
 	for block in blocks:
 		plaintext = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] # plaintext container
-		padding = 0 
-		if block[len(block)-1] < 16 and block[16-block[len(block)-1]] < 16 and block[len(block)-1] == block[16-block[len(block)-1]]:
-			padding = block[len(block)-1]
-			for p in range(16-block[len(block)-1], len(block)):
-				block.pop(len(block)-1)
+		padding = 0
+		if block[len(block)-1] > 256:
+			padding = block[len(block)-1]-256
+			paddingReal = True
+			for p in range(len(block)-(block[len(block)-1]-256), len(block)):
+				if not block[len(block)-1] == block[p]:
+					paddingReal = False
+			if paddingReal:
+				for p in range(16-(block[len(block)-1]-256), len(block)):
+					block.pop(len(block)-1)
 		if firstRound:
 			blockKey = aesEncrypt(IV, aesKey)
 			firstRound = False
