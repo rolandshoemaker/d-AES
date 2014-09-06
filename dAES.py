@@ -220,34 +220,44 @@ def getIndex(k, usedRow, usedColumn):
 
 @profile
 def shiftRow(row, shift, newSbox):
-		rowItems = list(range(row*16, (row*16)+16))
-		rowNew = [0]*256
-		for i, item in enumerate(rowItems):
-				rowNew[(i+shift)%16] = newSbox[i]
-		for i, item in enumerate(rowItems):
-				newSbox[i] = rowNew[i]
+		#rowItems = list(range(row*16, (row*16)+16))
+		rowItems = [row, ((row*16)+16)+1]
+		newSbox[rowItems[0]:rowItems[1]] = rotate(newSbox[rowItems[0]:rowItems[1]], shift)
+		#rowNew = [0]*256
+		#for i, item in enumerate(rowItems):
+		#		rowNew[(i+shift)%16] = newSbox[i]
+		#for i, item in enumerate(rowItems):
+		#		newSbox[i] = rowNew[i]
 
 @profile
 def shiftColumn(column, shift, newSbox):
-		columnItems = list(range(column, 256-(15-column), 16))
-		columnNew = [0]*256
-		for i in columnItems:
-				columnNew[(i+shift)%16] = newSbox[i]
-		for i in columnItems:
-				newSbox[(i+shift)%16] = columnNew[(i+shift)%16]
+		#columnItems = list(range(column, 256-(15-column), 16))
+		columnItems = [column, 256-(15-column)+1]
+		newSbox[columnItems[0]:columnItems[1]:16] = rotate(newSbox[columnItems[0]:columnItems[1]:16], shift)
+		#columnNew = [0]*256
+		#for i in columnItems:
+		#		columnNew[(i+shift)%16] = newSbox[i]
+		#for i in columnItems:
+		#		newSbox[(i+shift)%16] = columnNew[(i+shift)%16]
 
 @profile
 def swap(coords, newSbox):
-		rowItems = list(range(coords[0]*16, (coords[0]*16)+16))
-		columnItems = list(range(coords[1], 256-(15-coords[1]), 16))
-		rowNew = [0]*256
-		columnNew = [0]*256
-		for a, b in zip(rowItems, columnItems):
-				columnNew[b] = newSbox[a]
-				rowNew[a] = newSbox[b]
-		for a, b in zip(rowItems, columnItems):
-				newSbox[b] = columnNew[b]
-				newSbox[a] = rowNew[a]
+		#rowItems = list(range(coords[0]*16, (coords[0]*16)+16))
+		#columnItems = list(range(coords[1], 256-(15-coords[1]), 16))
+		rowItems = [coords[0]*16, ((coords[0]*16)+16)]
+		columnItems = [coords[1], 256-(15-coords[1])]
+		rowCopy = newSbox[rowItems[0]:rowItems[1]]
+		newSbox[rowItems[0]:rowItems[1]] = newSbox[columnItems[0]:columnItems[1]:16]
+		newSbox[columnItems[0]:columnItems[1]:16] = rowCopy[:]
+
+		#rowNew = [0]*256
+		#columnNew = [0]*256
+		#for a, b in zip(rowItems, columnItems):
+		#		columnNew[b] = newSbox[a]
+		#		rowNew[a] = newSbox[b]
+		#for a, b in zip(rowItems, columnItems):
+		#		newSbox[b] = columnNew[b]
+		#		newSbox[a] = rowNew[a]
 
 @profile
 def sboxRound(key, newSbox):
@@ -285,11 +295,14 @@ def invDynamicSbox(sbox):
 
 # returns a copy of the word shifted n bytes (chars)
 # positive values for n shift bytes left, negative values shift right
+@profile
 def rotate(word, n):
 	return word[n:]+word[0:n]
 
+
 # iterate over each "virtual" row in the state table and shift the bytes
 # to the LEFT by the appropriate offset
+@profile
 def shiftRows(state):
 	for i in range(4):
 		state[i*4:i*4+4] = rotate(state[i*4:i*4+4],i)
@@ -557,7 +570,6 @@ def decrypt(myInput, aesKey):
 	IV = blocks[0]
 	blocks.pop(0)
 	sbox = generateDynamicSbox(sboxOrig, aesKey)
-	sboxInv = invDynamicSbox(sbox)
 	# begin reading in blocks of input to decrypt
 	firstRound = True
 	for block in blocks:
@@ -573,10 +585,10 @@ def decrypt(myInput, aesKey):
 				for p in range(16-(block[len(block)-1]-256), len(block)):
 					block.pop(len(block)-1)
 		if firstRound:
-			blockKey = aesEncrypt(IV, aesKey, sbox, sboxInv)
+			blockKey = aesEncrypt(IV, aesKey, sbox)
 			firstRound = False
 		else:
-			blockKey = aesEncrypt(blockKey, aesKey, sbox, sboxInv)
+			blockKey = aesEncrypt(blockKey, aesKey, sbox)
 		for i in range(len(block)):
 			plaintext[i] = block[i] ^ blockKey[i]
 		if padding > 0:
@@ -600,4 +612,6 @@ if __name__ == "__main__":
 	test_key = "f4eba54dab7b4cdcb34f13689beea128acdc8960c8ec4c929d0c9f85d2fa5c22" # 256-bit (64 character) hex key
 	int_test_key = hexToKey(test_key)
 	plain = uuid.uuid4().hex*8
-	encrypt(plain, int_test_key)
+	cipher = encrypt(plain, int_test_key)
+	plaintwo = decrypt(cipher, int_test_key)
+	print(str(plain==plaintwo))
