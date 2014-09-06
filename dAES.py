@@ -13,6 +13,9 @@ import sys, hashlib, string, getpass
 from copy import copy, deepcopy
 from random import randint
 
+#debug
+import uuid
+
 sboxOrig = [
 		0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
 		0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -70,12 +73,14 @@ rcon = [
 		0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb
 		]
 
+@profile
 def getShift(key):
 		shiftCount = 0
 		for i, k in enumerate(key):
 				shiftCount ^= k*(i+1)%(0xFF+1)
 		return shiftCount
 
+@profile
 def getIndex(k, usedRow, usedColumn):
 		coord = []
 		coord.append(k&0x0F) # row
@@ -97,6 +102,7 @@ def getIndex(k, usedRow, usedColumn):
 				usedColumn.pop(usedColumn.index(coord[1]))
 		return coord
 
+@profile
 def shiftRow(row, shift, newSbox):
 		rowItems = list(range(row*16, (row*16)+16))
 		rowNew = [0]*256
@@ -105,6 +111,7 @@ def shiftRow(row, shift, newSbox):
 		for i, item in enumerate(rowItems):
 				newSbox[i] = rowNew[i]
 
+@profile
 def shiftColumn(column, shift, newSbox):
 		columnItems = list(range(column, 256-(15-column), 16))
 		columnNew = [0]*256
@@ -113,6 +120,7 @@ def shiftColumn(column, shift, newSbox):
 		for i in columnItems:
 				newSbox[(i+shift)%16] = columnNew[(i+shift)%16]
 
+@profile
 def swap(coords, newSbox):
 		rowItems = list(range(coords[0]*16, (coords[0]*16)+16))
 		columnItems = list(range(coords[1], 256-(15-coords[1]), 16))
@@ -125,6 +133,7 @@ def swap(coords, newSbox):
 				newSbox[b] = columnNew[b]
 				newSbox[a] = rowNew[a]
 
+@profile
 def sboxRound(key, newSbox):
 		shiftCount = getShift(key)
 		usedRow = list(range(16))
@@ -134,12 +143,15 @@ def sboxRound(key, newSbox):
 				shiftRow(coord[0], shiftCount, newSbox)
 				shiftColumn(coord[1], shiftCount, newSbox)
 				swap(coord, newSbox)
+				
+@profile
 def mixKey(key):
 	newKey = []
 	for i in range(len(key)):
-		newKey.append(key[i]^key[(i+8)%16]^sum(key))
+		newKey.append(key[i]^sum(key))
 	return newKey
 
+@profile
 def generateDynamicSbox(sbox, key):
 		newSbox = deepcopy(sbox)
 		sboxKey = mixKey(key)
@@ -147,6 +159,7 @@ def generateDynamicSbox(sbox, key):
 		sboxRound(sboxKey[16:32], newSbox)
 		return newSbox
 
+@profile
 def invDynamicSbox(sbox):
 		invSbox = [0]*256
 		for i, byte in enumerate(sbox):
@@ -373,17 +386,14 @@ def aesMainInv(state, expandedKey, sboxInv, numRounds=14):
 	addRoundKey(state, roundKey)
 	
 # aesEncrypt - encrypt a single block of plaintext
-def aesEncrypt(plaintext, key):
-	sbox = generateDynamicSbox(sboxOrig, key)
+def aesEncrypt(plaintext, key, sbox):
 	block = copy(plaintext)
 	expandedKey = expandKey(key, sbox)
 	aesMain(block, expandedKey, sbox)
 	return block
 
 # aesDecrypt - decrypte a single block of ciphertext
-def aesDecrypt(ciphertext, key):
-	sbox = generateDynamicSbox(sboxOrig, key)
-	sboxInv = invDynamicSbox(sbox)
+def aesDecrypt(ciphertext, key, sbox, sboxInv):
 	block = copy(ciphertext)
 	expandedKey = expandKey(key, sbox)
 	aesMainInv(block, expandedKey, sboxInv)
@@ -415,14 +425,15 @@ def encrypt(myInput, aesKey):
 	# begin reading in blocks of input to encrypt
 	blocks = getTextBlocks(myInput)
 	cipher.append("".join(IVcopy))
+	sbox = generateDynamicSbox(sboxOrig, aesKey)
 	firstRound = True
 	for x, block in enumerate(blocks):
 		ciphertext = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] # ciphertext
 		if firstRound:
-			blockKey = aesEncrypt(IV, aesKey)
+			blockKey = aesEncrypt(IV, aesKey, sbox)
 			firstRound = False
 		else:
-			blockKey = aesEncrypt(blockKey, aesKey)
+			blockKey = aesEncrypt(blockKey, aesKey, sbox)
 
 		y = 0
 		for i in range(16):
@@ -446,6 +457,8 @@ def decrypt(myInput, aesKey):
 	# recover Initialization Vector, the first block in file
 	IV = blocks[0]
 	blocks.pop(0)
+	sbox = generateDynamicSbox(sboxOrig, aesKey)
+	sboxInv = invDynamicSbox(sbox)
 	# begin reading in blocks of input to decrypt
 	firstRound = True
 	for block in blocks:
@@ -461,10 +474,10 @@ def decrypt(myInput, aesKey):
 				for p in range(16-(block[len(block)-1]-256), len(block)):
 					block.pop(len(block)-1)
 		if firstRound:
-			blockKey = aesEncrypt(IV, aesKey)
+			blockKey = aesEncrypt(IV, aesKey, sbox, sboxInv)
 			firstRound = False
 		else:
-			blockKey = aesEncrypt(blockKey, aesKey)
+			blockKey = aesEncrypt(blockKey, aesKey, sbox, sboxInv)
 		for i in range(len(block)):
 			plaintext[i] = block[i] ^ blockKey[i]
 		if padding > 0:
@@ -483,3 +496,9 @@ def hexToKey(hexKey):
 	for i in range(0, len(hexKey), 2):
 		key.append(int(hexKey[i:i+2], base=16))
 	return key
+
+if __name__ == "__main__":
+	test_key = "f4eba54dab7b4cdcb34f13689beea128acdc8960c8ec4c929d0c9f85d2fa5c22" # 256-bit (64 character) hex key
+	int_test_key = hexToKey(test_key)
+	plain = uuid.uuid4().hex*8
+	encrypt(plain, int_test_key)
