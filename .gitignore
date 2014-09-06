@@ -2,3 +2,5 @@ dev/
 __pycache__/
 *.lprof
 *.prof
+*.sublime-workspace
+*.sublime-project
