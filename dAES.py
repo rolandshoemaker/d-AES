@@ -269,7 +269,8 @@ def mixKey(key):
 
 @profile
 def generateDynamicSbox(sbox, key):
-		newSbox = deepcopy(sbox)
+		#newSbox = deepcopy(sbox)
+		newSbox = sbox[:]
 		sboxKey = mixKey(key)
 		sboxRound(sboxKey[0:16], newSbox)
 		sboxRound(sboxKey[16:32], newSbox)
@@ -374,23 +375,11 @@ def addRoundKey(state, roundKey):
 		#print "new state value:", state[i] ^ roundKey[i]
 		state[i] = state[i] ^ roundKey[i]
 
-# Galois Multiplication
-def galoisMult(a, b):
-	p = 0
-	hiBitSet = 0
-	for i in range(8):
-		if b & 1 == 1:
-			p ^= a
-		hiBitSet = a & 0x80
-		a <<= 1
-		if hiBitSet == 0x80:
-			a ^= 0x1b
-		b >>= 1
-	return p % 256
-
 # mixColumn takes a column and does stuff
+@profile
 def mixColumn(column):
-	temp = copy(column)
+	#temp = copy(column)
+	temp = column[:]
 	column[0] = galois2[temp[0]]^galois1[temp[3]]^galois1[temp[2]]^galois3[temp[1]]
 	column[1] = galois2[temp[1]]^galois1[temp[0]]^galois1[temp[3]]^galois3[temp[2]]
 	column[2] = galois2[temp[2]]^galois1[temp[1]]^galois1[temp[0]]^galois3[temp[3]]
@@ -495,7 +484,8 @@ def aesMainInv(state, expandedKey, sboxInv, numRounds=14):
 	
 # aesEncrypt - encrypt a single block of plaintext
 def aesEncrypt(plaintext, key, sbox):
-	block = copy(plaintext)
+	#block = copy(plaintext)
+	block = plaintext[:]
 	expandedKey = expandKey(key, sbox)
 	aesMain(block, expandedKey, sbox)
 	return block
@@ -527,7 +517,8 @@ def encrypt(myInput, aesKey):
 	IV = []
 	for i in range(16):
 		IV.append(randint(0, 255))
-	IVcopy = copy(IV)
+	#IVcopy = copy(IV)
+	IVcopy = IV[:]
 	for i in range(len(IV)):
 		IVcopy[i] = chr(IV[i])
 	# begin reading in blocks of input to encrypt
