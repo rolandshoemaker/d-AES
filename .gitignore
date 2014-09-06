@@ -1,2 +1,4 @@
 dev/
 __pycache__/
+*.lprof
+*.prof
