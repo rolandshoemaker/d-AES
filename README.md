@@ -7,7 +7,7 @@ A pure python3 implementation of the Rijndael cipher (AES) based on Brandon Ster
 
 I am using the Hosseinkhani-Javadi method to generate the S-Box, although I am using two rounds of their block instead of one. This means I use all of the 256-bit key instead of just the first 128-bits, introducing more S-Box possibilities.
 
-One possible attack method would be to generate all possible S-Boxes and apply them during the subBytes step as suggested by Hosseikhani and Javadi, but the number of possible S-Boxes is somewhere around ![10 to the power of 38, factorial](http://www.sciweavers.org/tex2img.php?eq=%2810%5E%7B38%7D%20%29%21&bc=White&fc=Black&im=jpg&fs=12&ff=mathptmx&edit=0) choices for 128-bits of key
+One possible attack method would be to generate all possible S-Boxes and apply them during the subBytes step as suggested by Hosseikhani and Javadi, but the number of possible S-Boxes is somewhere around 10 to the power of 38, factorial ((10^38)!) choices for 128-bits of key. By mixing a full 256 bit key with itself and using each 128 bit half of the key for two rounds of the sboxRound function we increase the number of possible S-Boxes to 2^256. 
 
 Visulization
 ------------
