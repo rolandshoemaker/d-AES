@@ -1,13 +1,13 @@
 d-AES
 =====
 
-**Note:** This is not mean't to be fast. As I work I'll try to optimize to the best of my ability but this is above all a **POC** implementation of dynamic S-Boxes!
+**Note:** This is not mean't to be fast. As I work I'll try to optimize to the best of my ability but this is above all a **POC** implementation of dynamic S-Boxes! (It does **MUCH** under PyPy!)
 
-A pure python3 implementation of the Rijndael cipher (AES) based on Brandon Sterne's python2.5 [implementation](http://brandon.sternefamily.net/2007/06/aes-tutorial-python-implementation/) that additionally implements modifications to the AES Cipher suggested in various academic papers to dynamically generate S-Boxes from the cipher key instead of using the fixed Rijndael S-Box, increasing the difficulty of linear and differntial cryptanalysis as well as making the improved Davies Attack more complicated.
+A pure python3(/2.7) implementation of the Rijndael cipher (AES) based on Brandon Sterne's python2.5 [implementation](http://brandon.sternefamily.net/2007/06/aes-tutorial-python-implementation/) that additionally implements modifications to the AES Cipher suggested in various academic papers to dynamically generate S-Boxes from the cipher key instead of using the fixed Rijndael S-Box.
 
-I am using the Hosseinkhani-Javadi method to generate the S-Box, although I am using two rounds of their block instead of one. This means I use all of the 256-bit key instead of just the first 128-bits, introducing more S-Box possibilities.
+I am using the Hosseinkhani-Javadi method to generate the S-Box, although using all 256 bits of the key instead of just the first 128 to perform two rounds in a similar fashion to a block cipher.
 
-One possible attack method would be to generate all possible S-Boxes and apply them during the subBytes step as suggested by Hosseikhani and Javadi, but the number of possible S-Boxes is somewhere around 10 to the power of 38, factorial ((10^38)!) choices for 128-bits of key. By mixing a full 256 bit key with itself and using each 128 bit half of the key for two rounds of the sboxRound function we increase the number of possible S-Boxes to 2^256. 
+One possible attack method would be to generate all possible S-Boxes from all possible 256 bit AES keys and apply them during the subBytes step as suggested by Hosseikhani and Javadi, but the number of possible S-Boxes is somewhere around 10 to the power of 38, factorial ((10^38)!) choices for 128-bits of key. By mixing a full 256 bit key with itself and using each 128 bit half of the key for two rounds of the sboxRound function we increase the number of possible S-Boxes to 2^256. 
 
 Visulization
 ------------
