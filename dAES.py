@@ -189,77 +189,45 @@ galois14=[
 		0xd7, 0xd9, 0xcb, 0xc5, 0xef, 0xe1, 0xf3, 0xfd, 0xa7, 0xa9, 0xbb, 0xb5, 0x9f, 0x91, 0x83, 0x8d
 		]
 
-##@profile
 def getShift(key):
 		shiftCount = 0
 		for i, k in enumerate(key):
 				shiftCount ^= k*(i+1)%(0xFF+1)
 		return shiftCount
 
-##@profile
 def getIndex(k, usedRow, usedColumn):
 		coord = []
 		coord.append(k&0x0F) # row
 		coord.append(k>>4) # column
 		if not coord[0] in usedRow:
-				coord[0] = 0
-				while not coord[0] in usedRow:
-						coord[0] += 1
+				coord[0] = usedRow[0]
 				usedRow.pop(usedRow.index(coord[0]))
 		else:
 				usedRow.pop(usedRow.index(coord[0]))
 
 		if not coord[1] in usedColumn:
-				coord[1] = 0
-				while not coord[1] in usedColumn:
-						coord[1] += 1
+				coord[1] = usedColumn[0]
 				usedColumn.pop(usedColumn.index(coord[1]))
 		else:
 				usedColumn.pop(usedColumn.index(coord[1]))
 		return coord
 
-##@profile
+
 def shiftRow(row, shift, newSbox):
-		#rowItems = list(range(row*16, (row*16)+16))
 		rowItems = [row, ((row*16)+16)+1]
 		newSbox[rowItems[0]:rowItems[1]] = rotate(newSbox[rowItems[0]:rowItems[1]], shift)
-		#rowNew = [0]*256
-		#for i, item in enumerate(rowItems):
-		#		rowNew[(i+shift)%16] = newSbox[i]
-		#for i, item in enumerate(rowItems):
-		#		newSbox[i] = rowNew[i]
 
-##@profile
 def shiftColumn(column, shift, newSbox):
-		#columnItems = list(range(column, 256-(15-column), 16))
 		columnItems = [column, 256-(15-column)+1]
 		newSbox[columnItems[0]:columnItems[1]:16] = rotate(newSbox[columnItems[0]:columnItems[1]:16], shift)
-		#columnNew = [0]*256
-		#for i in columnItems:
-		#		columnNew[(i+shift)%16] = newSbox[i]
-		#for i in columnItems:
-		#		newSbox[(i+shift)%16] = columnNew[(i+shift)%16]
 
-##@profile
 def swap(coords, newSbox):
-		#rowItems = list(range(coords[0]*16, (coords[0]*16)+16))
-		#columnItems = list(range(coords[1], 256-(15-coords[1]), 16))
 		rowItems = [coords[0]*16, ((coords[0]*16)+16)]
 		columnItems = [coords[1], 256-(15-coords[1])]
 		rowCopy = newSbox[rowItems[0]:rowItems[1]]
 		newSbox[rowItems[0]:rowItems[1]] = newSbox[columnItems[0]:columnItems[1]:16]
 		newSbox[columnItems[0]:columnItems[1]:16] = rowCopy[:]
 
-		#rowNew = [0]*256
-		#columnNew = [0]*256
-		#for a, b in zip(rowItems, columnItems):
-		#		columnNew[b] = newSbox[a]
-		#		rowNew[a] = newSbox[b]
-		#for a, b in zip(rowItems, columnItems):
-		#		newSbox[b] = columnNew[b]
-		#		newSbox[a] = rowNew[a]
-
-##@profile
 def sboxRound(key, newSbox):
 		shiftCount = getShift(key)
 		usedRow = list(range(16))
@@ -270,14 +238,12 @@ def sboxRound(key, newSbox):
 				shiftColumn(coord[1], shiftCount, newSbox)
 				swap(coord, newSbox)
 				
-##@profile
 def mixKey(key):
 	newKey = []
 	for i in range(len(key)):
 		newKey.append(key[i]^sum(key))
 	return newKey
 
-##@profile
 def generateDynamicSbox(sbox, key):
 		#newSbox = deepcopy(sbox)
 		newSbox = sbox[:]
@@ -286,7 +252,6 @@ def generateDynamicSbox(sbox, key):
 		sboxRound(sboxKey[16:32], newSbox)
 		return newSbox
 
-##@profile
 def invDynamicSbox(sbox):
 		invSbox = [0]*256
 		for i, byte in enumerate(sbox):
@@ -295,14 +260,12 @@ def invDynamicSbox(sbox):
 
 # returns a copy of the word shifted n bytes (chars)
 # positive values for n shift bytes left, negative values shift right
-##@profile
 def rotate(word, n):
 	return word[n:]+word[0:n]
 
 
 # iterate over each "virtual" row in the state table and shift the bytes
 # to the LEFT by the appropriate offset
-##@profile
 def shiftRows(state):
 	for i in range(4):
 		state[i*4:i*4+4] = rotate(state[i*4:i*4+4],i)
@@ -314,7 +277,6 @@ def shiftRowsInv(state):
 		state[i*4:i*4+4] = rotate(state[i*4:i*4+4],-i)
 
 # takes 4-byte word and iteration number
-#@profile
 def keyScheduleCore(word, i, sbox):
 	# rotate word 1 byte to the left
 	word = rotate(word, 1)
@@ -328,7 +290,6 @@ def keyScheduleCore(word, i, sbox):
 
 # expand 256 bit cipher key into 240 byte key from which
 # each round key is derived
-#@profile
 def expandKey(cipherKey, sbox):
 	cipherKeySize = len(cipherKey)
 	assert cipherKeySize == 32
@@ -350,8 +311,6 @@ def expandKey(cipherKey, sbox):
 	while currentSize < 240:
 		# assign previous 4 bytes to the temporary storage t
 		t = expandedKey[currentSize-4:currentSize]
-		#for i in range(4):
-		#	t[i] = expandedKey[(currentSize - 4) + i]
 
 		# every 32 bytes apply the core schedule to t
 		if currentSize % cipherKeySize == 0:
@@ -393,9 +352,7 @@ def addRoundKey(state, roundKey):
 		state[i] = state[i] ^ roundKey[i]
 
 # mixColumn takes a column and does stuff
-#@profile
 def mixColumn(column):
-	#temp = copy(column)
 	temp = column[:]
 	column[0] = galois2[temp[0]]^galois1[temp[3]]^galois1[temp[2]]^galois3[temp[1]]
 	column[1] = galois2[temp[1]]^galois1[temp[0]]^galois1[temp[3]]^galois3[temp[2]]
@@ -404,7 +361,6 @@ def mixColumn(column):
 
 # mixColumnInv does stuff too
 def mixColumnInv(column):
-	#temp = copy(column)
 	temp = column[:]
 	column[0] = galois14[temp[0]]^galois9[temp[3]]^galois13[temp[2]]^galois11[temp[1]]
 	column[1] = galois14[temp[1]]^galois9[temp[0]]^galois13[temp[3]]^galois11[temp[2]]
@@ -413,22 +369,17 @@ def mixColumnInv(column):
 
 # mixColumns is a wrapper for mixColumn - generates a "virtual" column from
 # the state table and applies the weird galois math
-#@profile
 def mixColumns(state):
 	for i in range(4):
 		column = []
 		# create the column by taking the same item out of each "virtual" row
 		column = state[i:12+i]
-		#for j in range(4):
-		#	column.append(state[j*4+i])
 
 		# apply mixColumn on our virtual column
 		mixColumn(column)
 
 		# transfer the new values back into the state table
 		state[i:12+i] = column
-		#for j in range(4):
-		#	state[j*4+i] = column[j]
 
 # mixColumnsInv is a wrapper for mixColumnInv - generates a "virtual" column from
 # the state table and applies the weird galois math
@@ -436,18 +387,15 @@ def mixColumnsInv(state):
 	for i in range(4):
 		column = []
 		# create the column by taking the same item out of each "virtual" row
-		for j in range(4):
-			column.append(state[j*4+i])
+		column = state[i:12+i]
 
 		# apply mixColumn on our virtual column
 		mixColumnInv(column)
 
 		# transfer the new values back into the state table
-		for j in range(4):
-			state[j*4+i] = column[j]
+		state[i:12+i] = column
 
 # aesRound applies each of the four transformations in order
-#@profile
 def aesRound(state, roundKey, sbox):
 	#print "aesRound - before subBytes:", state
 	subBytes(state, sbox)
@@ -477,7 +425,6 @@ def createRoundKey(expandedKey, n):
 	return expandedKey[(n*16):(n*16+16)]
 
 # wrapper function for 14 rounds of AES since we're using a 256-bit key
-#@profile
 def aesMain(state, expandedKey, sbox, numRounds=14):
 	roundKey = createRoundKey(expandedKey, 0)
 	addRoundKey(state, roundKey)
@@ -506,7 +453,6 @@ def aesMainInv(state, expandedKey, sboxInv, numRounds=14):
 	addRoundKey(state, roundKey)
 	
 # aesEncrypt - encrypt a single block of plaintext
-#@profile
 def aesEncrypt(plaintext, key, sbox):
 	#block = copy(plaintext)
 	block = plaintext[:]
@@ -521,7 +467,6 @@ def aesDecrypt(ciphertext, key, sbox, sboxInv):
 	aesMainInv(block, expandedKey, sboxInv)
 	return block
 
-#@profile
 def getTextBlocks(text):
 		if len(text) == 0:
 				return []
@@ -536,14 +481,12 @@ def getTextBlocks(text):
 
 # encrypt - wrapper function to allow encryption of arbitray length
 # plaintext using Output Feedback (OFB) mode
-#@profile
 def encrypt(myInput, aesKey):
 	# Initialization Vector
 	cipher = []
 	IV = []
 	for i in range(16):
 		IV.append(randint(0, 255))
-	#IVcopy = copy(IV)
 	IVcopy = IV[:]
 	for i in range(len(IV)):
 		IVcopy[i] = chr(IV[i])
@@ -615,7 +558,6 @@ def decrypt(myInput, aesKey):
 		plain.append("".join(plaintext))
 	return "".join(plain)
 
-#@profile
 def hexToKey(hexKey):
 	key = []
 	for i in hexKey[0:len(hexKey):2]:
