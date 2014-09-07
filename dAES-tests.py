@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 
 import dAES
-import uuid, random, copy, timeit
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as pyplot
+import uuid, random, copy, timeit, sys
+#import matplotlib
+#matplotlib.use('Agg')
+#import matplotlib.pyplot as pyplot
+from base64 import b64decode, b64encode
 
 class colors:
     HEADER = '\033[95m'
@@ -58,10 +59,14 @@ def basic_tests():
 	test_key = uuid.uuid4().hex+uuid.uuid4().hex # 256-bit (64 character) hex key
 	print(colors.OKBLUE+"Generated 256-bit AES key: "+colors.WARNING+test_key+colors.ENDC)
 	int_test_key = dAES.hexToKey(test_key)
-	print(colors.OKBLUE+"Generating "+str(size)+" bytes of plaintext..."+colors.ENDC)
 	plain = uuid.uuid4().hex+uuid.uuid4().hex+uuid.uuid4().hex+uuid.uuid4().hex[0:random.randrange(0,32)]
+	print(plain)
+	plaintwo = uuid.uuid4().hex+uuid.uuid4().hex+uuid.uuid4().hex+uuid.uuid4().hex[0:random.randrange(0,32)]
+	print(colors.OKBLUE+"Generating "+str(len(plain))+" bytes of plaintext..."+colors.ENDC)
 	print(colors.OKBLUE+"Encrypting plaintext..."+colors.ENDC)
 	hard = dAES.encrypt(plain, int_test_key)
+	hardtwo = dAES.encrypt(plain, int_test_key)
+	print(str(hard==hardtwo))
 	if plain!=hard:
 		print(colors.OKBLUE+"\tEncrypted ciphertext isn't the same as plaintext! "+colors.OKGREEN+"[PASSED]"+colors.ENDC)
 	else:
@@ -71,6 +76,7 @@ def basic_tests():
 	decd = dAES.decrypt(hard, int_test_key)
 	if plain==decd:
 		print(colors.OKBLUE+"\tDecrypted plaintext is the same as original plaintext! "+colors.OKGREEN+"[PASSED]"+colors.ENDC)
+		print(decd)
 	else:
 		print(colors.OKBLUE+"\tDecrypted plaintext isn't the same as original plaintext! "+colors.FAIL+"[FAILED]"+colors.ENDC)
 		print(plain)
@@ -82,17 +88,28 @@ def basic_tests():
 
 # testing speed of enc and dec functions
 def speed_tests(size):
+	eSpeeds = []
+	dSpeeds = []
 	test_key = "f4eba54dab7b4cdcb34f13689beea128acdc8960c8ec4c929d0c9f85d2fa5c22" # 256-bit (64 character) hex key
 	plain = uuid.uuid4().hex*(size//32)
 	e = timeit.Timer("dAES.encrypt('"+plain+"', dAES.hexToKey(\""+test_key+"\"))", "import dAES")
 	eSpeeds = e.repeat(100, 1)
+	#print("mean "+colors.OKGREEN+"enc"+colors.ENDC+" speed for "+str(sys.getsizeof(plain))+" byte string: "+colors.HEADER+str(round(mean(eSpeeds), 6))+colors.ENDC+"s")
+	print("mean "+colors.OKGREEN+"enc"+colors.ENDC+" speed for "+str(len(plain))+" byte string: "+colors.HEADER+str(round(mean(eSpeeds), 6))+colors.ENDC+"s")
 	d = timeit.Timer("dAES.decrypt(\""+plain+"\", dAES.hexToKey(\""+test_key+"\"))", "import dAES")
 	dSpeeds = e.repeat(100, 1)
+	#print("mean "+colors.FAIL+"dec"+colors.ENDC+" speed for "+str(sys.getsizeof(plain))+" byte string: "+colors.HEADER+str(round(mean(dSpeeds), 6))+colors.ENDC+"s")
+	print("mean "+colors.FAIL+"dec"+colors.ENDC+" speed for "+str(len(plain))+" byte string: "+colors.HEADER+str(round(mean(dSpeeds), 6))+colors.ENDC+"s")
 	return [eSpeeds, dSpeeds]
 
 # testing how different s-boxes actually are...
 def sbox_tests(iters):
 	# sbox tests
+	test_key = uuid.uuid4().hex+uuid.uuid4().hex
+	sbox_one = dAES.generateDynamicSbox(dAES.sboxOrig, dAES.hexToKey(test_key))
+	sbox_two = dAES.generateDynamicSbox(dAES.sboxOrig, dAES.hexToKey(test_key))
+	print(str(sbox_one==sbox_two))
+
 	sbox_sim = []
 	for i in range(iters):
 		sbox_key = uuid.uuid4().hex+uuid.uuid4().hex
@@ -108,23 +125,24 @@ def sbox_tests(iters):
 	print("percentage with no difference: "+str(round((sbox_sim.count(0)/len(sbox_sim))*100, 2))+"%")
 	return sbox_sim
 
-# speeds = []
-# xOneData = []
-# xTwoData = []
-# doubles = doubler(32, 5)
-# for i in doubles:
-# 	speeds.append(speed_tests(i))
-# 	for j in range(100):
-# 		xOneData.append(i-10)
-# 		xTwoData.append(i+10)
+speeds = []
+xOneData = []
+xTwoData = []
+doubles = doubler(32, 15)
 
-# yOneData = []
-# yTwoData = []
-# for i in speeds:
-# 	for k in i[0]:
-# 		yOneData.append(k)
-# 	for k in i[1]:
-# 		yTwoData.append(k)
+for i in doubles:
+	speeds.append(speed_tests(i))
+	for j in range(100):
+		xOneData.append(i-10)
+		xTwoData.append(i+10)
+
+#yOneData = []
+#yTwoData = []
+#for i in speeds:
+#	for k in i[0]:
+#		yOneData.append(k)
+#	for k in i[1]:
+#		yTwoData.append(k)
 
 #pyplot.title("Speed over doubling plain/ciphertext size")
 #pyplot.xlabel("text size (in bytes)")
@@ -133,4 +151,6 @@ def sbox_tests(iters):
 #pyplot.axis([0,max(xTwoData)+32,min([min(yOneData), min(yTwoData)]),max([max(yOneData), max(yTwoData)])])
 #pyplot.savefig(str(uuid.uuid4())+'.png')
 
-sbox_tests(100)
+#sbox_tests(100)
+
+#basic_tests()
