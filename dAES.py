@@ -479,6 +479,18 @@ def getTextBlocks(text):
 						currBlock = []
 		return blocks
 
+def getEncTextBlocks(text):
+                if len(text) == 0:
+                                return []
+                currBlock = []
+                blocks = []
+                for i, c in enumerate(text.split("\\")):
+                                currBlock.append(int(c, base=16))
+                                if len(currBlock) == 16 or i == len(text)-1:
+                                                blocks.append(currBlock)
+                                                currBlock = []
+                return blocks
+
 # encrypt - wrapper function to allow encryption of arbitray length
 # plaintext using Output Feedback (OFB) mode
 def encrypt(myInput, aesKey):
@@ -489,10 +501,10 @@ def encrypt(myInput, aesKey):
 		IV.append(randint(0, 255))
 	IVcopy = IV[:]
 	for i in range(len(IV)):
-		IVcopy[i] = chr(IV[i])
+		IVcopy[i] = hex(IV[i])
 	# begin reading in blocks of input to encrypt
 	blocks = getTextBlocks(myInput)
-	cipher.append("".join(IVcopy))
+	cipher.append("\\".join(IVcopy))
 	sbox = generateDynamicSbox(sboxOrig, aesKey)
 	firstRound = True
 	for x, block in enumerate(blocks):
@@ -510,18 +522,15 @@ def encrypt(myInput, aesKey):
 			else:
 				if y == 0 and not i == 0:
 					y = i
-				ciphertext[i] = 256+(16-y) 
-
-		for i, c in enumerate(ciphertext):
-			ciphertext[i] = chr(c)
-		cipher.append("".join(ciphertext))
-	return "".join(cipher)
+				ciphertext[i] = 256+(16-y) 	
+		cipher.append("\\".join(map(hex, ciphertext)))
+	return "\\".join(cipher)
 
 # decrypt - wrapper function to allow decryption of arbitray length
 # ciphertext using Output Feedback (OFB) mode
 def decrypt(myInput, aesKey):
 	plain = []
-	blocks = getTextBlocks(myInput)
+	blocks = getEncTextBlocks(myInput)
 	# recover Initialization Vector, the first block in file
 	IV = blocks[0]
 	blocks.pop(0)
