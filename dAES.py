@@ -559,10 +559,20 @@ def decrypt(myInput, aesKey):
 	return "".join(plain)
 
 def hexToKey(hexKey):
-	key = []
-	for i in hexKey[0:len(hexKey):2]:
-		key.append(int(i, base=16))
-	return key
+        key = []
+        for i in range(0, len(hexKey), 2):
+                key.append(int(hexKey[i:i+2], base=16))
+        return key
+
+def keyToHex(intKey):
+        key = []
+        for i in intKey:
+                hex_part = hex(i)
+                if len(hex_part) == 4:
+                        key.append(hex_part[2:])
+                elif len(hex_part) == 3:
+                        key.append("0"+hex_part[2:])
+        return "".join(key)
 
 if __name__ == "__main__":
 	test_key = "f4eba54dab7b4cdcb34f13689beea128acdc8960c8ec4c929d0c9f85d2fa5c22" # 256-bit (64 character) hex key
