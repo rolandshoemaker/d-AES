@@ -139,10 +139,12 @@ sbox_tests(100)
 
 print(colors.HEADER+"\n[Speed tests]"+colors.ENDC)
 if hasattr(sys, "pypy_translation_info"):
-	print(colors.OKBLUE+"Testing encryption and decryption speeds for strings of length ["+colors.OKGREEN+", ".join(map(str, doubler(32768, 5)))+colors.OKBLUE+"]"+colors.ENDC)
+	doubles = doubler(32768, 5)
+	print(colors.OKBLUE+"Testing encryption and decryption speeds for strings of length ["+colors.OKGREEN+", ".join(map(str, doubles))+colors.OKBLUE+"]"+colors.ENDC)
 	for i in doubles:
 		speed_tests(i)
 else:
-	print(colors.OKBLUE+"Testing encryption and decryption speeds for strings of length ["+colors.OKGREEN+", ".join(map(str, doubler(32768, 2)))+colors.OKBLUE+"]"+colors.ENDC)
+	doubles = doubler(32768, 2))
+	print(colors.OKBLUE+"Testing encryption and decryption speeds for strings of length ["+colors.OKGREEN+", ".join(map(str, doubles))+colors.OKBLUE+"]"+colors.ENDC)
 	for i in doubles:
 		speed_tests(i)
