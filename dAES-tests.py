@@ -99,9 +99,9 @@ def speed_tests(size):
 	d = timeit.Timer("dAES.decrypt(\""+plain+"\", dAES.hexToKey(\""+test_key+"\"))", "import dAES")
 	dSpeeds = e.repeat(100, 1)
 	if hasattr(sys, "pypy_translation_info"):
-		print(colors.OKBLUE+"\tMean "+colors.FAIL+"dec"+colors.OKBLUE+" speed for "+str(len(plain))+" character string: "+colors.HEADER+str(round(mean(dSpeeds), 6))+"s"+colors.ENDC)
+		print(colors.OKBLUE+"\tMean "+colors.FAIL+"dec"+colors.OKBLUE+" speed for "+str(len(plain))+" character string: "+colors.HEADER+str(round(mean(dSpeeds), 6))+"s\n"+colors.ENDC)
 	else:
-		print(colors.OKBLUE+"\tMean "+colors.FAIL+"dec"+colors.OKBLUE+" speed for "+str(sys.getsizeof(plain))+" byte string: "+colors.HEADER+str(round(mean(dSpeeds), 6))+"s"+colors.ENDC)
+		print(colors.OKBLUE+"\tMean "+colors.FAIL+"dec"+colors.OKBLUE+" speed for "+str(sys.getsizeof(plain))+" byte string: "+colors.HEADER+str(round(mean(dSpeeds), 6))+"s\n"+colors.ENDC)
 	return [eSpeeds, dSpeeds]
 
 # testing how different s-boxes actually are...
@@ -137,9 +137,12 @@ basic_tests()
 
 sbox_tests(100)
 
-doubles = doubler(32768, 5)
-
 print(colors.HEADER+"\n[Speed tests]"+colors.ENDC)
-print(colors.OKBLUE+"Testing encryption and decryption speeds for strings of length ["+colors.OKGREEN+", ".join(map(str, doubles))+colors.OKBLUE+"]"+colors.ENDC)
-for i in doubles:
-	speed_tests(i)
+if hasattr(sys, "pypy_translation_info"):
+	print(colors.OKBLUE+"Testing encryption and decryption speeds for strings of length ["+colors.OKGREEN+", ".join(map(str, doubler(32768, 5)))+colors.OKBLUE+"]"+colors.ENDC)
+	for i in doubles:
+		speed_tests(i)
+else:
+	print(colors.OKBLUE+"Testing encryption and decryption speeds for strings of length ["+colors.OKGREEN+", ".join(map(str, doubler(32768, 2)))+colors.OKBLUE+"]"+colors.ENDC)
+	for i in doubles:
+		speed_tests(i)
