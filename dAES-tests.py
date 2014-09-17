@@ -137,7 +137,7 @@ basic_tests()
 
 sbox_tests(100)
 
-doubles = doubler(16384, 5)
+doubles = doubler(32768, 5)
 
 print(colors.HEADER+"\n[Speed tests]"+colors.ENDC)
 print(colors.OKBLUE+"Testing encryption and decryption speeds for strings of length ["+colors.OKGREEN+", ".join(map(str, doubles))+colors.OKBLUE+"]"+colors.ENDC)
