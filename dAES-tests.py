@@ -144,7 +144,7 @@ if hasattr(sys, "pypy_translation_info"):
 	for i in doubles:
 		speed_tests(i)
 else:
-	doubles = doubler(32768, 2))
+	doubles = doubler(32768, 2)
 	print(colors.OKBLUE+"Testing encryption and decryption speeds for strings of length ["+colors.OKGREEN+", ".join(map(str, doubles))+colors.OKBLUE+"]"+colors.ENDC)
 	for i in doubles:
 		speed_tests(i)
