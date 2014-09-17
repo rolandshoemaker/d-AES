@@ -4,3 +4,5 @@ __pycache__/
 *.prof
 *.sublime-workspace
 *.sublime-project
+*.profl
+*.pyc
