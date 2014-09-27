@@ -13,7 +13,7 @@ import sys, hashlib, string, getpass
 from copy import copy, deepcopy
 from random import randint
 
-#debug
+# debug
 import uuid
 
 sboxOrig = [
@@ -190,94 +190,106 @@ galois14=[
 		]
 
 def getShift(key):
-		shiftCount = 0
-		for i, k in enumerate(key):
-				shiftCount ^= k*(i+1)%(0xFF+1)
-		return shiftCount
+	""" Return the shift count based on the AES key."""
+	shiftCount = 0
+	for i, k in enumerate(key):
+			shiftCount ^= k*(i+1)%(0xFF+1)
+	return shiftCount
 
 def getIndex(k, usedRow, usedColumn):
-		coord = []
-		coord.append(k&0x0F) # row
-		coord.append(k>>4) # column
-		if not coord[0] in usedRow:
-				coord[0] = usedRow[0]
-				usedRow.pop(usedRow.index(coord[0]))
-		else:
-				usedRow.pop(usedRow.index(coord[0]))
+	""" Return the next available row or by doing the operation k&0x0F (where k is a byte in the key), 
+	and the next available column by doing the operation k>>4."""
+	coord = []
+	coord.append(k&0x0F) # row
+	coord.append(k>>4) # column
+	if not coord[0] in usedRow:
+			coord[0] = usedRow[0]
+			usedRow.pop(usedRow.index(coord[0]))
+	else:
+			usedRow.pop(usedRow.index(coord[0]))
 
-		if not coord[1] in usedColumn:
-				coord[1] = usedColumn[0]
-				usedColumn.pop(usedColumn.index(coord[1]))
-		else:
-				usedColumn.pop(usedColumn.index(coord[1]))
-		return coord
+	if not coord[1] in usedColumn:
+			coord[1] = usedColumn[0]
+			usedColumn.pop(usedColumn.index(coord[1]))
+	else:
+			usedColumn.pop(usedColumn.index(coord[1]))
+	return coord
 
 
 def shiftRow(row, shift, newSbox):
-		rowItems = [row, ((row*16)+16)+1]
-		newSbox[rowItems[0]:rowItems[1]] = rotate(newSbox[rowItems[0]:rowItems[1]], shift)
+	""" Shift every item in the S-Boxes row by shift positions."""
+	rowItems = [row, ((row*16)+16)+1]
+	newSbox[rowItems[0]:rowItems[1]] = rotate(newSbox[rowItems[0]:rowItems[1]], shift)
 
 def shiftColumn(column, shift, newSbox):
-		columnItems = [column, 256-(15-column)+1]
-		newSbox[columnItems[0]:columnItems[1]:16] = rotate(newSbox[columnItems[0]:columnItems[1]:16], shift)
+	""" Shift every item in the S-Boxes column by shift positions."""
+	columnItems = [column, 256-(15-column)+1]
+	newSbox[columnItems[0]:columnItems[1]:16] = rotate(newSbox[columnItems[0]:columnItems[1]:16], shift)
 
 def swap(coords, newSbox):
-		rowItems = [coords[0]*16, ((coords[0]*16)+16)]
-		columnItems = [coords[1], 256-(15-coords[1])]
-		rowCopy = newSbox[rowItems[0]:rowItems[1]]
-		newSbox[rowItems[0]:rowItems[1]] = newSbox[columnItems[0]:columnItems[1]:16]
-		newSbox[columnItems[0]:columnItems[1]:16] = rowCopy[:]
+	""" Switch the row and column from the tuple coords in the S-Box."""
+	rowItems = [coords[0]*16, ((coords[0]*16)+16)]
+	columnItems = [coords[1], 256-(15-coords[1])]
+	rowCopy = newSbox[rowItems[0]:rowItems[1]]
+	newSbox[rowItems[0]:rowItems[1]] = newSbox[columnItems[0]:columnItems[1]:16]
+	newSbox[columnItems[0]:columnItems[1]:16] = rowCopy[:]
 
 def sboxRound(key, newSbox):
-		shiftCount = getShift(key)
-		usedRow = list(range(16))
-		usedColumn = list(range(16))
-		for i in key:
-				coord = getIndex(i, usedRow, usedColumn)
-				shiftRow(coord[0], shiftCount, newSbox)
-				shiftColumn(coord[1], shiftCount, newSbox)
-				swap(coord, newSbox)
+	""" Runs a round of the S-Box block round."""
+	shiftCount = getShift(key)
+	usedRow = list(range(16))
+	usedColumn = list(range(16))
+	for i in key:
+			coord = getIndex(i, usedRow, usedColumn)
+			shiftRow(coord[0], shiftCount, newSbox)
+			shiftColumn(coord[1], shiftCount, newSbox)
+			swap(coord, newSbox)
 				
 def mixKey(key):
+	""" Returns an AES key where every byte in the output key is replaced by 
+	the operation k^sum_of_key, where k is the respective byte in the input key 
+	(this reduces collisions between similar keys)."""
 	newKey = []
 	for i in range(len(key)):
 		newKey.append(key[i]^sum(key))
 	return newKey
 
 def generateDynamicSbox(sbox, key):
-		#newSbox = deepcopy(sbox)
-		newSbox = sbox[:]
-		sboxKey = mixKey(key)
-		sboxRound(sboxKey[0:16], newSbox)
-		sboxRound(sboxKey[16:32], newSbox)
-		return newSbox
+	""" Returns a dynamic S-Box derived from the input 
+	AES key and the original AES S-Box."""
+	#newSbox = deepcopy(sbox)
+	newSbox = sbox[:]
+	sboxKey = mixKey(key)
+	sboxRound(sboxKey[0:16], newSbox)
+	sboxRound(sboxKey[16:32], newSbox)
+	return newSbox
 
 def invDynamicSbox(sbox):
-		invSbox = [0]*256
-		for i, byte in enumerate(sbox):
-				invSbox[sbox[i]] = i
-		return invSbox
+	""" Returns the inverse mapping of sbox."""
+	invSbox = [0]*256
+	for i, byte in enumerate(sbox):
+			invSbox[sbox[i]] = i
+	return invSbox
 
-# returns a copy of the word shifted n bytes (chars)
-# positive values for n shift bytes left, negative values shift right
 def rotate(word, n):
+	""" Returns a copy of the word shifted n bytes (chars)
+	positive values for n shift bytes left, negative values shift right."""
 	return word[n:]+word[0:n]
 
-
-# iterate over each "virtual" row in the state table and shift the bytes
-# to the LEFT by the appropriate offset
 def shiftRows(state):
+	""" Iterate over each "virtual" row in the state table and shift the bytes
+	to the LEFT by the appropriate offset."""
 	for i in range(4):
 		state[i*4:i*4+4] = rotate(state[i*4:i*4+4],i)
 
-# iterate over each "virtual" row in the state table and shift the bytes
-# to the RIGHT by the appropriate offset
 def shiftRowsInv(state):
+	""" Iterate over each "virtual" row in the state table and shift the bytes
+	to the RIGHT by the appropriate offset."""
 	for i in range(4):
 		state[i*4:i*4+4] = rotate(state[i*4:i*4+4],-i)
 
-# takes 4-byte word and iteration number
 def keyScheduleCore(word, i, sbox):
+	""" Takes 4-byte word and iteration number."""
 	# rotate word 1 byte to the left
 	word = rotate(word, 1)
 	newWord = []
@@ -288,9 +300,9 @@ def keyScheduleCore(word, i, sbox):
 	newWord[0] = newWord[0]^rcon[i]
 	return newWord
 
-# expand 256 bit cipher key into 240 byte key from which
-# each round key is derived
 def expandKey(cipherKey, sbox):
+	""" Expand 256 bit cipher key into 240 byte key from which
+	each round key is derived."""
 	cipherKeySize = len(cipherKey)
 	assert cipherKeySize == 32
 	# container for expanded key
@@ -331,45 +343,45 @@ def expandKey(cipherKey, sbox):
 			
 	return expandedKey
 
-# do sbox transform on each of the values in the state table
 def subBytes(state, sbox):
+	""" Do sbox transform on each of the values in the state table."""
 	for i in range(len(state)):
 		#print "state[i]:", state[i]
 		#print "sbox[state[i]]:", sbox[state[i]]
 		state[i] = sbox[state[i]]
 
-# inverse sbox transform on each byte in state table
 def subBytesInv(state, sboxInv):
+	""" Inverse sbox transform on each byte in state table."""
 	for i in range(len(state)):
 		state[i] = sboxInv[state[i]]
 
-# XOR each byte of the roundKey with the state table
 def addRoundKey(state, roundKey):
+	""" XOR each byte of the roundKey with the state table."""
 	for i in range(len(state)):
 		#print i
 		#print "old state value:", state[i]
 		#print "new state value:", state[i] ^ roundKey[i]
 		state[i] = state[i] ^ roundKey[i]
 
-# mixColumn takes a column and does stuff
 def mixColumn(column):
+	""" mixColumn takes a column and does stuff."""
 	temp = column[:]
 	column[0] = galois2[temp[0]]^galois1[temp[3]]^galois1[temp[2]]^galois3[temp[1]]
 	column[1] = galois2[temp[1]]^galois1[temp[0]]^galois1[temp[3]]^galois3[temp[2]]
 	column[2] = galois2[temp[2]]^galois1[temp[1]]^galois1[temp[0]]^galois3[temp[3]]
 	column[3] = galois2[temp[3]]^galois1[temp[2]]^galois1[temp[1]]^galois3[temp[0]]
 
-# mixColumnInv does stuff too
 def mixColumnInv(column):
+	""" mixColumnInv does stuff too."""
 	temp = column[:]
 	column[0] = galois14[temp[0]]^galois9[temp[3]]^galois13[temp[2]]^galois11[temp[1]]
 	column[1] = galois14[temp[1]]^galois9[temp[0]]^galois13[temp[3]]^galois11[temp[2]]
 	column[2] = galois14[temp[2]]^galois9[temp[1]]^galois13[temp[0]]^galois11[temp[3]]
 	column[3] = galois14[temp[3]]^galois9[temp[2]]^galois13[temp[1]]^galois11[temp[0]]
 
-# mixColumns is a wrapper for mixColumn - generates a "virtual" column from
-# the state table and applies the weird galois math
 def mixColumns(state):
+	""" mixColumns is a wrapper for mixColumn - generates a "virtual" column from
+	the state table and applies the weird galois math."""
 	for i in range(4):
 		column = []
 		# create the column by taking the same item out of each "virtual" row
@@ -381,9 +393,9 @@ def mixColumns(state):
 		# transfer the new values back into the state table
 		state[i:12+i] = column
 
-# mixColumnsInv is a wrapper for mixColumnInv - generates a "virtual" column from
-# the state table and applies the weird galois math
 def mixColumnsInv(state):
+	""" mixColumnsInv is a wrapper for mixColumnInv - generates a "virtual" column from
+	the state table and applies the weird galois math."""
 	for i in range(4):
 		column = []
 		# create the column by taking the same item out of each "virtual" row
@@ -395,8 +407,8 @@ def mixColumnsInv(state):
 		# transfer the new values back into the state table
 		state[i:12+i] = column
 
-# aesRound applies each of the four transformations in order
 def aesRound(state, roundKey, sbox):
+	""" aesRound applies each of the four transformations in order."""
 	#print "aesRound - before subBytes:", state
 	subBytes(state, sbox)
 	#print "aesRound - before shiftRows:", state
@@ -407,8 +419,8 @@ def aesRound(state, roundKey, sbox):
 	addRoundKey(state, roundKey)
 	#print "aesRound - after addRoundKey:", state
 
-# aesRoundInv applies each of the four inverse transformations
 def aesRoundInv(state, roundKey, sboxInv):
+	""" aesRoundInv applies each of the four inverse transformations."""
 	#print "aesRoundInv - before addRoundKey:", state
 	addRoundKey(state, roundKey)
 	#print "aesRoundInv - before mixColumnsInv:", state
@@ -419,13 +431,12 @@ def aesRoundInv(state, roundKey, sboxInv):
 	subBytesInv(state, sboxInv)
 	#print "aesRoundInv - after subBytesInv:", state
 
-
-# returns a 16-byte round key based on an expanded key and round number
 def createRoundKey(expandedKey, n):
+	""" Returns a 16-byte round key based on an expanded key and round number."""
 	return expandedKey[(n*16):(n*16+16)]
 
-# wrapper function for 14 rounds of AES since we're using a 256-bit key
 def aesMain(state, expandedKey, sbox, numRounds=14):
+	""" Wrapper function for 14 rounds of AES since we're using a 256-bit key."""
 	roundKey = createRoundKey(expandedKey, 0)
 	addRoundKey(state, roundKey)
 	for i in range(1, numRounds):
@@ -437,8 +448,8 @@ def aesMain(state, expandedKey, sbox, numRounds=14):
 	shiftRows(state)
 	addRoundKey(state, roundKey)
 
-# 14 rounds of AES inverse since we're using a 256-bit key
 def aesMainInv(state, expandedKey, sboxInv, numRounds=14):
+	""" Wrapper for 14 rounds of AES inverse since we're using a 256-bit key."""
 	# create roundKey for "last" round since we're going in reverse
 	roundKey = createRoundKey(expandedKey, numRounds)
 	# addRoundKey is the same funtion for inverse since it uses XOR
@@ -451,49 +462,50 @@ def aesMainInv(state, expandedKey, sboxInv, numRounds=14):
 	# last round - leave out the mixColumns transformation
 	roundKey = createRoundKey(expandedKey, 0)
 	addRoundKey(state, roundKey)
-	
-# aesEncrypt - encrypt a single block of plaintext
+
 def aesEncrypt(plaintext, key, sbox):
-	#block = copy(plaintext)
+	""" aesEncrypt - encrypt a single block of plaintext."""
 	block = plaintext[:]
 	expandedKey = expandKey(key, sbox)
 	aesMain(block, expandedKey, sbox)
 	return block
 
-# aesDecrypt - decrypte a single block of ciphertext
 def aesDecrypt(ciphertext, key, sbox, sboxInv):
+	""" aesDecrypt - decrypt a single block of ciphertext."""
 	block = copy(ciphertext)
 	expandedKey = expandKey(key, sbox)
 	aesMainInv(block, expandedKey, sboxInv)
 	return block
 
 def getTextBlocks(text):
-		if len(text) == 0:
-				return []
-		currBlock = []
-		blocks = []
-		for i, c in enumerate(text):
-				currBlock.append(ord(c))
-				if len(currBlock) == 16 or i == len(text)-1:
-						blocks.append(currBlock)
-						currBlock = []
-		return blocks
+	""" Return input text seperated into 16 char blocks."""
+	if len(text) == 0:
+		return []
+	currBlock = []
+	blocks = []
+	for i, c in enumerate(text):
+		currBlock.append(ord(c))
+		if len(currBlock) == 16 or i == len(text)-1:
+			blocks.append(currBlock)
+			currBlock = []
+	return blocks
 
 def getEncTextBlocks(text):
-                if len(text) == 0:
-                                return []
-                currBlock = []
-                blocks = []
-                for i, c in enumerate(text.split("\\")):
-                                currBlock.append(int(c, base=16))
-                                if len(currBlock) == 16 or i == len(text)-1:
-                                                blocks.append(currBlock)
-                                                currBlock = []
-                return blocks
+    """ Return input cipher text seperated into 16 char blocks."""
+    if len(text) == 0:
+        return []
+    currBlock = []
+    blocks = []
+    for i, c in enumerate(text.split("\\")):
+        currBlock.append(int(c, base=16))
+        if len(currBlock) == 16 or i == len(text)-1:
+            blocks.append(currBlock)
+            currBlock = []
+    return blocks
 
-# encrypt - wrapper function to allow encryption of arbitray length
-# plaintext using Output Feedback (OFB) mode
 def encrypt(myInput, aesKey):
+	""" encrypt - wrapper function to allow encryption of arbitray length
+	plaintext using Output Feedback (OFB) mode."""
 	# Initialization Vector
 	cipher = []
 	IV = []
@@ -526,9 +538,9 @@ def encrypt(myInput, aesKey):
 		cipher.append("\\".join(map(hex, ciphertext)))
 	return "\\".join(cipher)
 
-# decrypt - wrapper function to allow decryption of arbitray length
-# ciphertext using Output Feedback (OFB) mode
 def decrypt(myInput, aesKey):
+	""" decrypt - wrapper function to allow decryption of arbitray length
+	ciphertext using Output Feedback (OFB) mode."""
 	plain = []
 	blocks = getEncTextBlocks(myInput)
 	# recover Initialization Vector, the first block in file
@@ -568,20 +580,22 @@ def decrypt(myInput, aesKey):
 	return "".join(plain)
 
 def hexToKey(hexKey):
-        key = []
-        for i in range(0, len(hexKey), 2):
-                key.append(int(hexKey[i:i+2], base=16))
-        return key
+    """ Return a list of ints representing the AES hex key."""
+    key = []
+    for i in range(0, len(hexKey), 2):
+            key.append(int(hexKey[i:i+2], base=16))
+    return key
 
 def keyToHex(intKey):
-        key = []
-        for i in intKey:
-                hex_part = hex(i)
-                if len(hex_part) == 4:
-                        key.append(hex_part[2:])
-                elif len(hex_part) == 3:
-                        key.append("0"+hex_part[2:])
-        return "".join(key)
+    """ Return a AES hex key from a list of ints."""
+    key = []
+    for i in intKey:
+        hex_part = hex(i)
+        if len(hex_part) == 4:
+            key.append(hex_part[2:])
+        elif len(hex_part) == 3:
+            key.append("0"+hex_part[2:])
+    return "".join(key)
 
 if __name__ == "__main__":
 	test_key = "f4eba54dab7b4cdcb34f13689beea128acdc8960c8ec4c929d0c9f85d2fa5c22" # 256-bit (64 character) hex key
